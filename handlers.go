@@ -2,10 +2,12 @@ package main
 
 import (
   "encoding/json"
+  "fmt"
   "log"
   "net/http"
   "net/url"
   "strconv"
+  "strings"
   "time"
 
   "github.com/PuerkitoBio/goquery"
@@ -15,8 +17,9 @@ func Scrape(w http.ResponseWriter, r *http.Request) {
 
   slots := Slots{}
 
-  doc := getDocument("1")
-  slots = parseAvailableSlots(*doc)
+  doc := getDocument("http://tynemouth-squash.herokuapp.com/?day=1")
+  //slots = parseAvailableSlots(*doc)
+  slots = parseBookedSlots(*doc)
 
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
@@ -26,10 +29,9 @@ func Scrape(w http.ResponseWriter, r *http.Request) {
   }
 }
 
-func getDocument(days string) *goquery.Document {
+func getDocument(url string) *goquery.Document {
 
-  // TODO: for testing purposes set the day to 1. Day should be a parameter
-  resp, err := http.Get("http://tynemouth-squash.herokuapp.com/?day=" + days)
+  resp, err := http.Get(url)
   if err != nil {
     log.Fatal(err)
   }
@@ -61,6 +63,51 @@ func parseAvailableSlots(doc goquery.Document) []Slot {
   })
 
   return slots
+}
+
+func parseBookedSlots(doc goquery.Document) []Slot {
+
+  slots := Slots{}
+
+  href := ""
+
+  doc.Find(".booking div.booked a").Each(func(i int, s *goquery.Selection) {
+    link, found := s.Attr("href")
+    if found {
+      if href != link {
+        href = link
+        detailsDoc := getDocument("http://tynemouth-squash.herokuapp.com" + link)
+        parseSlotDetails(*detailsDoc)
+      }
+    }
+  })
+
+  return slots
+}
+
+func parseSlotDetails(doc goquery.Document) {
+  s := doc.Find("body h1")
+  court := s.Text()[6:7]
+  fmt.Println(court)
+
+  s = doc.Find("body h2")
+  w := strings.Fields(s.Text())
+  fmt.Println(w, len(w))
+
+  const shortForm = "3:04pm on Monday 02 January 2006"
+
+  // Mess about to get the time and date of the court.
+  year := time.Now().Year()
+  y := strconv.Itoa(year)
+  tim := w[0] + " " +w[1] + " " +w[2] + " " +w[3][0:2] + " " +w[4] + " " + y
+  t, e := time.Parse(shortForm, tim)
+  if e != nil {
+    log.Fatal(e)
+  }
+  fmt.Println(t)
+
+  // Get Player A 
+  // Get Player B
 }
 
 func parseLink(link string) Slot {
