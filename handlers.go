@@ -77,7 +77,7 @@ func parseBookedSlots(doc goquery.Document) []Slot {
       if href != link {
         href = link
         detailsDoc := getDocument("http://tynemouth-squash.herokuapp.com" + link)
-        parseSlotDetails(*detailsDoc)
+        parseSlotDetails(*detailsDoc, link)
       }
     }
   })
@@ -85,14 +85,13 @@ func parseBookedSlots(doc goquery.Document) []Slot {
   return slots
 }
 
-func parseSlotDetails(doc goquery.Document) {
+func parseSlotDetails(doc goquery.Document, link string) {
   s := doc.Find("body h1")
-  court := s.Text()[6:7]
-  fmt.Println(court)
+  c := s.Text()[6:7]
+  court, _ := strconv.Atoi(c)
 
   s = doc.Find("body h2")
   w := strings.Fields(s.Text())
-  fmt.Println(w, len(w))
 
   const shortForm = "3:04pm on Monday 02 January 2006"
 
@@ -104,10 +103,15 @@ func parseSlotDetails(doc goquery.Document) {
   if e != nil {
     log.Fatal(e)
   }
-  fmt.Println(t)
 
-  // Get Player A 
-  // Get Player B
+  slot := Slot {
+    Court: court,
+    Time: t.Format("2006-01-02 15:04:05.000"),
+    Booked: true,
+    Link: "http://tynemouth-squash.herokuapp.com" + link,
+  }
+  fmt.Println(slot)
+
 }
 
 func parseLink(link string) Slot {
