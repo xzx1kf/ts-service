@@ -2,7 +2,6 @@ package main
 
 import (
   "encoding/json"
-  "fmt"
   "log"
   "net/http"
   "net/url"
@@ -15,11 +14,11 @@ import (
 
 func Scrape(w http.ResponseWriter, r *http.Request) {
 
-  slots := Slots{}
+  var slots Slots
 
   doc := getDocument("http://tynemouth-squash.herokuapp.com/?day=1")
-  //slots = parseAvailableSlots(*doc)
-  slots = parseBookedSlots(*doc)
+  parseAvailableSlots(*doc, &slots)
+  parseBookedSlots(*doc, &slots)
 
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
@@ -50,24 +49,18 @@ func getDocument(url string) *goquery.Document {
   return doc
 }
 
-func parseAvailableSlots(doc goquery.Document) []Slot {
-
-  slots := Slots{}
+func parseAvailableSlots(doc goquery.Document, slots *Slots) {
 
   doc.Find(".booking div.book a.booking_link").Each(func(i int,s *goquery.Selection) {
     link, found := s.Attr("href")
     if found {
       slot := parseLink(link)
-      slots = append(slots, slot)
+      *slots = append(*slots, slot)
     }
   })
-
-  return slots
 }
 
-func parseBookedSlots(doc goquery.Document) []Slot {
-
-  slots := Slots{}
+func parseBookedSlots(doc goquery.Document, slots *Slots) {
 
   href := ""
 
@@ -77,15 +70,14 @@ func parseBookedSlots(doc goquery.Document) []Slot {
       if href != link {
         href = link
         detailsDoc := getDocument("http://tynemouth-squash.herokuapp.com" + link)
-        parseSlotDetails(*detailsDoc, link)
+        slot := parseSlotDetails(*detailsDoc, link)
+        *slots = append(*slots, slot)
       }
     }
   })
-
-  return slots
 }
 
-func parseSlotDetails(doc goquery.Document, link string) {
+func parseSlotDetails(doc goquery.Document, link string) Slot {
   s := doc.Find("body h1")
   c := s.Text()[6:7]
   court, _ := strconv.Atoi(c)
@@ -110,8 +102,8 @@ func parseSlotDetails(doc goquery.Document, link string) {
     Booked: true,
     Link: "http://tynemouth-squash.herokuapp.com" + link,
   }
-  fmt.Println(slot)
 
+  return slot
 }
 
 func parseLink(link string) Slot {
