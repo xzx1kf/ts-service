@@ -20,6 +20,8 @@ func Scrape(w http.ResponseWriter, r *http.Request) {
   parseAvailableSlots(*doc, &slots)
   parseBookedSlots(*doc, &slots)
 
+  w.Header().Set("Content-Type", "application/json") // normal header
+
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
   err := enc.Encode(slots)
